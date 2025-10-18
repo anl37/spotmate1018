@@ -8,6 +8,8 @@ import { TabNavigation } from "@/components/TabNavigation";
 import { ActiveMeetingWindow } from "@/components/ActiveMeetingWindow";
 import { toast } from "@/hooks/use-toast";
 import { ConnectPing } from "@/components/ConnectPing";
+import { LiveLocationPill } from "@/components/LiveLocationPill";
+import { useLocation } from "@/services/location";
 
 // Mock data
 const mockUsers = [
@@ -50,6 +52,7 @@ const mockUsers = [
 ];
 
 const Space = () => {
+  const { startTracking, stopTracking, startHighAccuracySession, stopHighAccuracySession, currentLocation } = useLocation();
   const [connectEnabled, setConnectEnabled] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(getCurrentTime());
@@ -80,6 +83,24 @@ const Space = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Sync location tracking with Connect toggle
+  useEffect(() => {
+    if (connectEnabled) {
+      startTracking();
+    } else {
+      stopTracking();
+    }
+  }, [connectEnabled, startTracking, stopTracking]);
+
+  // Handle high accuracy mode for active meetings
+  useEffect(() => {
+    if (activeMeeting) {
+      startHighAccuracySession();
+    } else {
+      stopHighAccuracySession();
+    }
+  }, [activeMeeting, startHighAccuracySession, stopHighAccuracySession]);
+
   return (
     <div className="min-h-screen bg-gradient-subtle pb-24">
       {/* Header */}
@@ -97,7 +118,10 @@ const Space = () => {
                 </p>
               </div>
             </div>
-            <ConnectToggle enabled={connectEnabled} onToggle={setConnectEnabled} />
+            <div className="flex items-center gap-2">
+              <LiveLocationPill />
+              <ConnectToggle enabled={connectEnabled} onToggle={setConnectEnabled} />
+            </div>
           </div>
         </div>
       </header>
@@ -123,7 +147,7 @@ const Space = () => {
         )}
 
         {/* Presence Glow */}
-        {connectEnabled && (
+        {connectEnabled && currentLocation && (
           <div className="relative">
             <div className="absolute inset-0 bg-success/5 rounded-3xl animate-pulse shadow-glow" />
             <div className="relative bg-card/50 backdrop-blur border border-success/20 rounded-3xl p-6 shadow-soft">
@@ -131,7 +155,9 @@ const Space = () => {
                 <div className="w-3 h-3 rounded-full bg-success animate-pulse shadow-glow" />
                 <div className="flex-1">
                   <p className="font-semibold text-foreground">You're here</p>
-                  <p className="text-sm text-muted-foreground">People within 10 m can see you</p>
+                  <p className="text-sm text-muted-foreground">
+                    People within ~{Math.round(currentLocation.accuracy)} m can see you
+                  </p>
                 </div>
               </div>
             </div>
